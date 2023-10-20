@@ -12,7 +12,7 @@ div {
     height: 100%;
 }
 
-button {
+a {
     display: block;
     width: 20.25em;
     padding: .5em 2em;
@@ -25,11 +25,9 @@ button {
     font-weight: 700;
     line-height: 2em;
     text-decoration: none;
-    border: 0;
-    outline: 0;
     transition: transform 33ms;
 }
 
-button:hover {
+a:hover {
     transform: scale(1.04);
 }

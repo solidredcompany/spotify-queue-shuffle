@@ -6,9 +6,15 @@
     <link rel="stylesheet" href="../assets/css/home.css" />
 </head>
 
+<iframe name="secret-iframe" style="display: none"></iframe>
+
 <body>
-    <a href="/login">Authenticate</a>
-    <button>Shuffle queue</button>
+    <div>
+        <form action="/shuffle" method="post" target="secret-iframe">
+            <button class="cool-buttons" type="submit">Shuffle queue</button>
+            <button class="cool-buttons" type="submit">Shuffle queue</button>
+        </form>
+    </div>
 </body>
 
 </html>
