@@ -10,7 +10,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/solidredcompany/solid-red/websites/queue-shuffle/internal/utils"
+	"github.com/solidredcompany/spotify-queue-shuffle/internal/utils"
 )
 
 func HandleLogin(w http.ResponseWriter, r *http.Request) {

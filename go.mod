@@ -1,3 +1,3 @@
-module github.com/solidredcompany/solid-red/websites/queue-shuffle
+module github.com/solidredcompany/spotify-queue-shuffle
 
 go 1.21.1

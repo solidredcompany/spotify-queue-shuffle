@@ -4,8 +4,8 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/solidredcompany/solid-red/websites/queue-shuffle/internal/auth"
-	"github.com/solidredcompany/solid-red/websites/queue-shuffle/internal/shuffle"
+	"github.com/solidredcompany/spotify-queue-shuffle/internal/auth"
+	"github.com/solidredcompany/spotify-queue-shuffle/internal/shuffle"
 )
 
 func main() {
