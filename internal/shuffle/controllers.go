@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"text/template"
+	"time"
 )
 
 func HandleHome(w http.ResponseWriter, r *http.Request) {
@@ -123,8 +124,6 @@ func shuffleQueue(token string) error {
 	// currently playing song, have been skipped.
 	i := 0
 	for i != len(URIs)+2 {
-		i++
-
 		req, err := http.NewRequest("POST", "https://api.spotify.com/v1/me/player/next", nil)
 
 		if err != nil {
@@ -138,9 +137,20 @@ func shuffleQueue(token string) error {
 
 		sRes, sErr := client.Do(req)
 
-		if sErr != nil || sRes.StatusCode != http.StatusNoContent {
+		if sErr != nil || !(sRes.StatusCode == http.StatusNoContent || sRes.StatusCode == http.StatusAccepted) {
 			fmt.Println("Error skipping song", sRes.Status)
 		}
+
+		// Wait for the song to be skipped before continuing.
+		// This could be done by checking the currently playing song against the song
+		// that was just skipped, but a timeout works for now.
+		if sRes.StatusCode == http.StatusAccepted {
+			fmt.Println("Waiting for song to be skipped")
+
+			time.Sleep(500 * time.Millisecond)
+		}
+
+		i++
 	}
 
 	return nil
