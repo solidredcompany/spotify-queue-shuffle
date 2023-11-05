@@ -4,7 +4,7 @@ body {
     background-color: #121212;
 }
 
-div {
+#container {
     display: flex;
     justify-content: center;
     align-items: center;
@@ -28,8 +28,17 @@ button {
     border: 0;
     outline: 0;
     transition: transform 33ms;
+    max-width: 90vw;
 }
 
 button:hover {
     transform: scale(1.04);
+}
+
+#error-message {
+	color: #FF0000;
+	font-size: 16px;
+	font-family: sans-serif;
+	text-align: center;
+	margin-top: 1em;
 }

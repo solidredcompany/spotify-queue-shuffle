@@ -79,7 +79,7 @@ func shuffleQueue(token string) error {
 
 	if qRes.StatusCode != http.StatusOK {
 		fmt.Println("Error getting queue", qRes.Status)
-		return errors.New("Error getting queue")
+		return errors.New("error getting queue")
 	}
 
 	// Extract URIs from the "queue" array
@@ -180,7 +180,7 @@ func addToQueue(client *http.Client, token string, uri string) error {
 
 	if sRes.StatusCode != http.StatusNoContent {
 		fmt.Println("Error adding song to queue", sRes.Status)
-		return errors.New("Error adding song to queue")
+		return errors.New("error adding song to queue")
 	}
 
 	return nil

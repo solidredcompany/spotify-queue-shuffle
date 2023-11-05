@@ -3,17 +3,47 @@
 <html>
 
 <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="../assets/css/home.css" />
 </head>
 
 <iframe name="secret-iframe" style="display: none"></iframe>
 
 <body>
-    <div>
-        <form action="/shuffle" method="post" target="secret-iframe">
-            <button class="cool-buttons" type="submit">Shuffle queue</button>
-        </form>
+    <div id="container">
+        <div>
+
+            <form action="/shuffle" method="post" target="secret-iframe">
+                <button class="cool-buttons" type="submit">Shuffle queue</button>
+            </form>
+
+            <div id="error-message"></div>
+        </div>
     </div>
 </body>
+
+<script>
+    function handleResponse() {
+
+        if (this.readyState === 4) {
+            if (this.status >= 300) {
+                var errorMessageDiv = document.getElementById("error-message");
+                errorMessageDiv.style.display = "block";
+                errorMessageDiv.textContent = "Error: " + this.responseText;
+            }
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        var form = document.querySelector("form");
+        form.addEventListener("submit", function (event) {
+            event.preventDefault();
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", "/shuffle", true);
+            xhr.onreadystatechange = handleResponse;
+            xhr.send();
+        });
+    });
+</script>
 
 </html>
