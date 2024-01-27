@@ -11,6 +11,12 @@ import (
 	"time"
 )
 
+// A song that is added to the end of the queue to indicate which songs should be shuffled.
+// This is necessary because the Spotify API includes all the songs that will play after the
+// queue is done in the GET /me/player/queue endpoint, and there is no way to distinguish
+// beteen the actual queue and the rest of the songs.
+const delimiter = "spotify:track:5zOKuItOTZhRCGtPrDYmlj"
+
 func HandleHome(w http.ResponseWriter, r *http.Request) {
 	// Check if the user is logged in. Redirect to the sign in page if they are not.
 	_, tErr := r.Cookie("access_token")
@@ -56,56 +62,30 @@ func HandleShuffle(w http.ResponseWriter, r *http.Request) {
 func shuffleQueue(token string) error {
 	client := &http.Client{}
 
-	// A song that is added to the end of the queue to indicate which songs should be shuffled.
-	// This is necessary because the Spotify API includes all the songs that will play after the
-	// queue is done in the GET /me/player/queue endpoint, and there is no way to distinguish
-	// beteen the actual queue and the rest of the songs.
-	delimiter := "spotify:track:5zOKuItOTZhRCGtPrDYmlj"
-
 	addToQueue(client, token, delimiter)
 
-	// Get the user's current queue.
-	req, _ := http.NewRequest("GET", "https://api.spotify.com/v1/me/player/queue", nil)
-	req.Header.Add(
-		"Authorization",
-		fmt.Sprintf("Bearer %s", token),
-	)
-
-	qRes, qErr := client.Do(req)
-
-	if qErr != nil {
-		return qErr
-	}
-
-	if qRes.StatusCode != http.StatusOK {
-		fmt.Println("Error getting queue", qRes.Status)
-		return errors.New("error getting queue")
-	}
-
-	// Extract URIs from the "queue" array
-	var parsed queueResponse
-
-	if err := json.NewDecoder(qRes.Body).Decode(&parsed); err != nil {
-		fmt.Println("Error decoding response body:", err)
-		return err
-	}
-
 	var URIs []string
-	for _, s := range parsed.Queue {
-		// Stop adding songs to the list of URIs the first time that the delimiter is seen.
-		// This assumes that that particular song wasn't in the queue before we added it above,
-		// but people shouldn't listen to that song, so I don't see it as an issue.
-		if s.URI == delimiter {
+	var qErr error
+
+	// Try to get the queue up to 5 times, with a delay of one second between each attempt.
+	// This is necessary because it might sometimes take longer than expected for the delimiter
+	// to be added to the queue.
+	for i := 0; i < 5; i++ {
+		URIs, qErr = getQueue(client, token)
+
+		if qErr == nil {
 			break
 		}
 
-		URIs = append(URIs, s.URI)
+		fmt.Printf("Error getting queue (attempt %d): %v\n", i+1, qErr)
+		time.Sleep(1 * time.Second)
 	}
 
 	// If there are no songs in the queue, return early since there is nothing to do.
 	// This will mean that the delimiter will be left in the queue, but that is the
 	// users punishment for using the website incorrectly.
 	if len(URIs) == 0 {
+		fmt.Println("No songs in queue")
 		return nil
 	}
 
@@ -154,6 +134,59 @@ func shuffleQueue(token string) error {
 	}
 
 	return nil
+}
+
+func getQueue(client *http.Client, token string) ([]string, error) {
+	req, err := http.NewRequest("GET", "https://api.spotify.com/v1/me/player/queue", nil)
+
+	if err != nil {
+		fmt.Println("Error creating request")
+	}
+
+	req.Header.Add(
+		"Authorization",
+		fmt.Sprintf("Bearer %s", token),
+	)
+
+	qRes, qErr := client.Do(req)
+
+	if qErr != nil {
+		return nil, qErr
+	}
+
+	if qRes.StatusCode != http.StatusOK {
+		fmt.Println("Error getting queue", qRes.Status)
+		return nil, errors.New("error getting queue")
+	}
+
+	// Extract URIs from the "queue" array
+	var parsed queueResponse
+
+	if err := json.NewDecoder(qRes.Body).Decode(&parsed); err != nil {
+		fmt.Println("Error decoding response body:", err)
+		return nil, err
+	}
+
+	var delimiterFound bool
+
+	var URIs []string
+	for _, s := range parsed.Queue {
+		// Stop adding songs to the list of URIs the first time that the delimiter is seen.
+		// This assumes that that particular song wasn't in the queue before we added it above,
+		// but people shouldn't listen to that song, so I don't see it as an issue.
+		if s.URI == delimiter {
+			delimiterFound = true
+			break
+		}
+
+		URIs = append(URIs, s.URI)
+	}
+
+	if !delimiterFound {
+		return nil, errors.New("delimiter not found in queue")
+	}
+
+	return URIs, nil
 }
 
 func addToQueue(client *http.Client, token string, uri string) error {
