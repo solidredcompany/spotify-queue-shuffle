@@ -12,9 +12,11 @@
 <body>
     <div id="container">
         <div>
-
             <form action="/shuffle" method="post" target="secret-iframe">
-                <button class="cool-buttons" type="submit">Shuffle queue</button>
+                <button class="cool-buttons" type="submit">
+                    <div id="spinner" style="display: none;"></div>
+                    <p id="button-text" style="display: block;">Shuffle queue</p>
+                </button>
             </form>
 
             <div id="error-message"></div>
@@ -26,6 +28,9 @@
     function handleResponse() {
 
         if (this.readyState === 4) {
+            document.getElementById("spinner").style.display = "none";
+            document.getElementById("button-text").style.display = "block";
+
             if (this.status >= 300) {
                 var errorMessageDiv = document.getElementById("error-message");
                 errorMessageDiv.style.display = "block";
@@ -38,6 +43,16 @@
         var form = document.querySelector("form");
         form.addEventListener("submit", function (event) {
             event.preventDefault();
+
+            // Prevent multiple clicks
+            if (document.getElementById("spinner").style.display === "block") {
+                return;
+            }
+
+            document.getElementById("spinner").style.display = "block";
+            document.getElementById("button-text").style.display = "none";
+            document.getElementById("error-message").style.display = "none";
+
             var xhr = new XMLHttpRequest();
             xhr.open("POST", "/shuffle", true);
             xhr.onreadystatechange = handleResponse;
