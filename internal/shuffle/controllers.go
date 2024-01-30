@@ -59,6 +59,32 @@ func HandleShuffle(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Create a request to the Spotify API.
+// A delay is added to the request in an attempt to avoid flaky behaviour.
+func doRequest(client *http.Client, token string, method string, path string, query *url.Values) (*http.Response, error) {
+	req, err := http.NewRequest(method, fmt.Sprintf("https://api.spotify.com/v1%s", path), nil)
+
+	if err != nil {
+		fmt.Println("Error creating request")
+	}
+
+	if query != nil {
+		req.URL.RawQuery = query.Encode()
+	}
+
+	req.Header.Add(
+		"Authorization",
+		fmt.Sprintf("Bearer %s", token),
+	)
+
+	res, err := client.Do(req)
+
+	// Add a delay to the request to avoid flaky behaviour.
+	time.Sleep(1000 * time.Millisecond)
+
+	return res, err
+}
+
 func shuffleQueue(token string) error {
 	client := &http.Client{}
 
@@ -78,7 +104,6 @@ func shuffleQueue(token string) error {
 		}
 
 		fmt.Printf("Error getting queue (attempt %d): %v\n", i+1, qErr)
-		time.Sleep(1 * time.Second)
 	}
 
 	// If there are no songs in the queue, return early since there is nothing to do.
@@ -96,7 +121,12 @@ func shuffleQueue(token string) error {
 
 	// Re-add the songs to the queue.
 	for _, s := range URIs {
-		addToQueue(client, token, s)
+		aErr := addToQueue(client, token, s)
+
+		if aErr != nil {
+			fmt.Println("Error adding song to queue:", aErr)
+			return aErr
+		}
 	}
 
 	// Skip the songs in the old, unshuffled, queue.
@@ -104,30 +134,11 @@ func shuffleQueue(token string) error {
 	// currently playing song, have been skipped.
 	i := 0
 	for i != len(URIs)+2 {
-		req, err := http.NewRequest("POST", "https://api.spotify.com/v1/me/player/next", nil)
-
-		if err != nil {
-			fmt.Println("Error creating request")
-		}
-
-		req.Header.Add(
-			"Authorization",
-			fmt.Sprintf("Bearer %s", token),
-		)
-
-		sRes, sErr := client.Do(req)
+		sRes, sErr := doRequest(client, token, "POST", "/me/player/next", nil)
 
 		if sErr != nil || !(sRes.StatusCode == http.StatusNoContent || sRes.StatusCode == http.StatusAccepted) {
-			fmt.Println("Error skipping song", sRes.Status)
-		}
-
-		// Wait for the song to be skipped before continuing.
-		// This could be done by checking the currently playing song against the song
-		// that was just skipped, but a timeout works for now.
-		if sRes.StatusCode == http.StatusAccepted {
-			fmt.Println("Waiting for song to be skipped")
-
-			time.Sleep(500 * time.Millisecond)
+			fmt.Println("Error skipping song", sRes.Status, sErr)
+			return sErr
 		}
 
 		i++
@@ -137,18 +148,7 @@ func shuffleQueue(token string) error {
 }
 
 func getQueue(client *http.Client, token string) ([]string, error) {
-	req, err := http.NewRequest("GET", "https://api.spotify.com/v1/me/player/queue", nil)
-
-	if err != nil {
-		fmt.Println("Error creating request")
-	}
-
-	req.Header.Add(
-		"Authorization",
-		fmt.Sprintf("Bearer %s", token),
-	)
-
-	qRes, qErr := client.Do(req)
+	qRes, qErr := doRequest(client, token, "GET", "/me/player/queue", nil)
 
 	if qErr != nil {
 		return nil, qErr
@@ -190,22 +190,11 @@ func getQueue(client *http.Client, token string) ([]string, error) {
 }
 
 func addToQueue(client *http.Client, token string, uri string) error {
-	req, err := http.NewRequest("POST", "https://api.spotify.com/v1/me/player/queue", nil)
-
-	if err != nil {
-		fmt.Println("Error creating request")
+	query := url.Values{
+		"uri": {uri},
 	}
 
-	req.URL.RawQuery = url.Values{
-		"uri": {uri},
-	}.Encode()
-
-	req.Header.Add(
-		"Authorization",
-		fmt.Sprintf("Bearer %s", token),
-	)
-
-	sRes, sErr := client.Do(req)
+	sRes, sErr := doRequest(client, token, "POST", "/me/player/queue", &query)
 
 	if sErr != nil {
 		return sErr
